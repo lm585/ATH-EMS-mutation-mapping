@@ -1,5 +1,14 @@
 penguin server
+some consecutive spaces need to be converted to tab
 /home/linyong/ATH/dir-js4-shr2-as-ref
+
+algorithm:
+1. get snv rate distribution of js1 relative to shr-2 line 
+2. in low snv rate region, find homozygous snv in js1 relative to shr-2 
+3. in the genomic positions where shr-2 have no or very low read coverage, 
+I will find homozygous snv in js1 relative to Columbia-0
+
+
 
 ###################### cat script-1-column
 ### select NM from 0 to 2
@@ -37,6 +46,40 @@ rm temp.1155.sam  n4.o1.e2."$s".nm2.bam
 id="js4"
 reSeqPrintSample.indel.fast.strAssign   ../TAIR9_chr.fas $id.1-column   "$s".nm2.pileup  $id    2 2 0.3
 reSeqPrintSample.indel.fast.strAssign   TAIR9_chr.fas   shr2.1-column   dir-test/shr2_GCCAAT.uniq.nonRed.sorted.nm2.pileup shr2  2 2 0.3
+
+###################### cat   script-snp-distr
+paste  /home/linyong/ATH/dir-js1-shr2-as-ref/ath-ref-3col    /home/linyong/ATH/dir-js1-shr2-as-ref/shr2.1-column js4.1-column     > temp-shr2-js4
+awk '$4 != $5'  temp-shr2-js4 >  temp-shr2-js4-diff
+awk '$4 != "N" && $5 != "N" ' temp-shr2-js4-diff > temp-shr2-js4-diff-noN  ###    437,677 temp-shr2-js4-diff-noN
+### get genome positions that are not N to calc snv rate
+awk '$4 != "N" && $5 != "N" ' temp-shr2-js4 > temp-1632
+awk 'NR > 1 {print $1 "\t" $2  "\t" $3 "\t" 100 "\t" "a\ta" }'   temp-1632 > temp-1632.pileup.inp
+
+awk 'NR > 1 {print "a\ta\ta\ta\t" $1 "\t" $2}'  temp-shr2-js4-diff-noN > temp-shr2-js4-diff-noN-inp
+
+pileupFilter.AtoG.snpRate-distr     temp-shr2-js4-diff-noN-inp temp-1632.pileup.inp    temp-snp-distr.txt 250000 2
+
+### running time - 1 hour
+combine2PileFiles shr2_GCCAAT.uniq.nonRed.sorted.nm2.pileup js4.combined.uniq.nonRed.sorted.nm2.pileup 0.85 0.8 /home/linyong/ATH/dir-js1-shr2-as-ref/ath-chr-order  2
+
+pileupFilter.AtoG   0.85 0.8 2  js4.combined.uniq.nonRed.sorted.nm2.pileup
+
+### get genome pos not covered  ( < 2 reads) in shr-2
+awk '$4 > 1 && NR > 1 {print $1 "\t" $2}'  shr2_GCCAAT.uniq.nonRed.sorted.nm2.pileup > temp-shr-pileup-2reads
+awk 'NR > 1 {print $1 "\t" $2}' ath-ref-3col > temp-ath-all-pos
+cat  temp-shr-pileup-2reads  temp-ath-all-pos     | sort | uniq -u > temp-uniq
+mv temp-uniq    shr2-not-covered-pos
+
+
+sh script-get-comb2pile-snv-in-desert | sort | uniq > temp-snv-in-desert ### +/- 250k produce duplicates
+
+### get snv in the regions not covered (or low reads) by shr2
+sed     's/     /-/' /home/linyong/ATH/dir-js1-shr2-as-ref/shr2-not-covered-pos | sort > temp-shr2-not-covered-pos-sorted
+sed     's/     \(Chr.\)        /       \1-/'   js4.combined.uniq.nonRed.sorted.nm2.pileup.m0.85.g0.8.c2        |       sort    -t      '       '       +4-5      >       temp-js4.nm2.pileup.m0.85.g0.8.c2.sorted
+join    -t      '       '       -1      1       -2      5       temp-shr2-not-covered-pos-sorted        temp-js4.nm2.pileup.m0.85.g0.8.c2.sorted        -o2.1,2.2,2.3,2.4,2.5,2.6,2.7,2.8,2.9,2.10        |       sed     's/     \(Chr.\)-/      \1      /'      >       js4.nm2.pileup.m0.85.g0.8.c2.shr2.no.cover
+
+awk '$4 >= 5'   js4.nm2.pileup.m0.85.g0.8.c2.shr2.no.cover >  js4.nm2.pileup.m0.85.g0.8.c2.shr2.no.cover.filted
+
 
 
 ######################  cat script-get-comb2pile-snv-in-desert
