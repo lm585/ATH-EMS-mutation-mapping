@@ -1,0 +1,71 @@
+penguin server
+/home/linyong/ATH/dir-js4-shr2-as-ref
+
+###################### cat script-1-column
+### select NM from 0 to 2
+### convert sam to bam
+### bam to sorted bam
+### bam to pileup
+### pileup to 1 column genotype file
+### compare js1's 1 column with shr's 1 column
+# chr1 123 A A T
+# chr1 200 A A AT
+# chr1 300 A A *
+#  chr1 400 A A .+T
+
+# get snp distribution
+# in snp desert region, find homozygous snp beween shr and js1
+# how?
+# compare js1 pileup with shr pileup (2 read vs. 2 read), homozygous snp, homozygous in both shr and js1
+# js1 heterozygous, not what we want
+# shr heterozygous, not what we want
+#
+# some positions, shr coverage is 1  or no coverage
+# obtain these positions
+# then
+#  compare js1 pileup with col-0 ref genome to get homozygous snp
+
+s="js4.combined.uniq.nonRed.sorted"
+### in the future, it may be better to use NM-4 instead of NM-2
+### if using NM:2, some reads with NM > 2 from Ler will be discarded, producing artificial homozygous SNV
+samtools view ./n4.o1.e2."$s".bam  | grep "     NM:i:[012]      " > temp.1155.sam
+samtools view -b -S -o n4.o1.e2."$s".nm2.bam  -t ../TAIR9_chr.fas.fai temp.1155.sam
+samtools sort n4.o1.e2."$s".nm2.bam n4.o1.e2."$s".nm2.sorted
+samtools mpileup  -Q 0 -d 1000000 -f   ../TAIR9_chr.fas  n4.o1.e2."$s".nm2.sorted.bam > "$s".nm2.pileup
+rm temp.1155.sam  n4.o1.e2."$s".nm2.bam
+
+id="js4"
+reSeqPrintSample.indel.fast.strAssign   ../TAIR9_chr.fas $id.1-column   "$s".nm2.pileup  $id    2 2 0.3
+reSeqPrintSample.indel.fast.strAssign   TAIR9_chr.fas   shr2.1-column   dir-test/shr2_GCCAAT.uniq.nonRed.sorted.nm2.pileup shr2  2 2 0.3
+
+
+######################  cat script-get-comb2pile-snv-in-desert
+cat js4-snv-desert-interval   | while read line
+do
+   chr=`echo "$line" | cut -f 1`
+   pos=`echo "$line" | cut -f 2`
+   awk '
+   {
+    if($3 == "'$chr'" && ('$pos' - 250000 <= $4 && '$pos' + 250000 >= $4 ))
+    {
+     print $0;
+    }
+   }
+   '  shr2_GCCAAT.uniq.nonRed.sorted.nm2.pileup_js4.combined.uniq.nonRed.sorted.nm2.pileup.snp
+done
+
+
+######################### cat script-get-1pile-snv-in-desert
+cat js4-snv-desert-interval  | while read line
+do
+   chr=`echo "$line" | cut -f 1`
+   pos=`echo "$line" | cut -f 2`
+   awk '
+   {
+    if($5 == "'$chr'" && ('$pos' - 250000 <= $6 && '$pos' + 250000 >= $6 ))
+    {
+     print $0;
+    }
+   }
+   '  js4.nm2.pileup.m0.85.g0.8.c2.shr2.no.cover
+done
