@@ -1,0 +1,18 @@
+$ pileupFilter.AtoG 0.9 0.8 5 watermelon18fq.pileup
+m       g       c       M       I       D       MI      MD      ID      MID
+0.9     0.8     5       219933  10956   7887    0       10130   0       0
+
+$ awk 'BEGIN {FS = "\t"} $3/$4 > 0.7' watermelon18fq.pileup.m0.9.g0.8.c5 > watermelon18fq.pileup.m0.9.g0.8.c5.filt
+248906 -> 245331 (7887 D; 10871 I; 216443 M; 10130 MD)
+
+$ pileupFilter.AtoG.combineDel     watermelon18fq.pileup.m0.9.g0.8.c5.filt  out
+### combine multiple consecutive deletions into one del event
+245331 -> 241452
+ (7887 D; 10871 I; 216443 M; 10130 MD) -> (14138 D;   10871 I;  216443 M)
+
+$  pileupFilter.AtoG.snpRate-distr watermelon18fq.pileup.m0.9.g0.8.c5.filt.delComb  watermelon18fq.pileup sv-distr 200000 5
+
+$  pileupFilter.AtoG.snpRate-distr  watermelon18fq.pileup.m0.9.g0.8.c5.filt  watermelon18fq.pileup out.txt 200000 5 
+
+$  pileupFilter.AtoG.sv-distr  sv-126-hardw-acc.2windows.table ../charleston-grep-SNP/snp-distr sv-distr 200000 5
+
